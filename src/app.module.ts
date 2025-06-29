@@ -1,28 +1,27 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { ClientDataModule } from './client-data/client-data.module';
-
-
+import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CloudinaryModule } from './cloudnary/cloudinary.module';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from './auth/jwt.strategy';
 
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true }),  
     MongooseModule.forRootAsync({
-      imports: [ConfigModule],
+      imports: [ConfigModule], 
       useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI'),
+        uri: configService.get<string>('MONGO_URI'), 
       }),
       inject: [ConfigService],
     }),
+    CloudinaryModule,  
     UserModule,
-    ClientDataModule,
     AuthModule,
   ],
-
-
 })
-export class AppModule { }
+export class AppModule {}
