@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ClientDataController } from './client-data.controller';
 import { ClientDataService } from './client-data.service';
-import { ClientData, ClientDataSchema } from './client-data.schema';
+import { CloudinaryData, CloudinaryDataSchema } from '../cloudnary/cloudnary-data.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: ClientData.name, schema: ClientDataSchema }]),
+    MongooseModule.forFeature([
+      { name: CloudinaryData.name, schema: CloudinaryDataSchema },
+    ]),
   ],
-  controllers: [ClientDataController],
   providers: [ClientDataService],
+  exports: [ClientDataService],
 })
 export class ClientDataModule {}

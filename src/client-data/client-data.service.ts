@@ -1,24 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ClientData, ClientDataDocument } from './client-data.schema';
+import {
+  CloudinaryData,
+  CloudinaryDataDocument,
+} from '../cloudnary/cloudnary-data.schema';
 
 @Injectable()
 export class ClientDataService {
   constructor(
-    @InjectModel(ClientData.name) private clientModel: Model<ClientDataDocument>,
+    @InjectModel(CloudinaryData.name)
+    private cloudinaryDataModel: Model<CloudinaryDataDocument>,
   ) {}
 
   async addClient(data: any, userId: string) {
-    const newClient = new this.clientModel({
+    const newClient = new this.cloudinaryDataModel({
       ...data,
       userId,
     });
     return await newClient.save();
   }
 
-  
   async getClientDataByUser(userId: string) {
-  return await this.clientModel.find({ userId });
-}
+    return await this.cloudinaryDataModel.find({ userId });
+  }
 }
