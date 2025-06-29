@@ -1,11 +1,19 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { CloudinaryData, CloudinaryDataDocument } from './cloudnary-data.schema';
 import * as Tesseract from 'tesseract.js';
 import { v2 as cloudinary } from 'cloudinary';
-import { Injectable } from '@nestjs/common';
+const sharp = require('sharp');
 
 @Injectable()
 export class CloudinaryService {
-  cloudinaryDataModel: any;
-  constructor() {
+  private readonly logger = new Logger(CloudinaryService.name);
+
+  constructor(
+    @InjectModel(CloudinaryData.name)
+    private readonly cloudinaryDataModel: Model<CloudinaryDataDocument>,
+  ) {
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
@@ -14,11 +22,55 @@ export class CloudinaryService {
   }
 
   async uploadAndExtract(file: Express.Multer.File): Promise<any> {
+    if (!file || !file.buffer) {
+      return {
+        status: 'error',
+        statusCode: 400,
+        message: 'File is missing or invalid.',
+      };
+    }
+
+    // Step 1: Preprocess image
+    const processedImage = await sharp(file.buffer)
+      .resize({ width: 1000 })
+      .grayscale()
+      .toBuffer();
+
+    // Step 2: OCR processing
+    const { data: { text } } = await Tesseract.recognize(processedImage, 'eng');
+    this.logger.log(`Extracted Text: ${text}`);
+
+    // Step 3: Field Extraction
+    const dobMatch = text.match(/(\d{2}\/\d{2}\/\d{4})/);
+    const aadhaarMatch = text.match(/(\d{4}\s\d{4}\s\d{4})/);
+    const aadhaarNumber = aadhaarMatch?.[1]?.replace(/\s/g, '') || '';
+    const isAadhaar = /Government of India|Unique Identification Authority/i.test(text);
+
+    if (!aadhaarMatch || !isAadhaar) {
+      return {
+        status: 'error',
+        statusCode: 422,
+        message: 'Invalid document. Aadhaar number not found or document not recognized as Aadhaar.',
+      };
+    }
+
+    const existing = await this.cloudinaryDataModel.findOne({ aadhaarNumber });
+    if (existing) {
+      this.logger.warn(`Aadhaar already exists: ${aadhaarNumber}`);
+      return {
+        status: 'exists',
+        statusCode: 200,
+        message: 'Aadhaar already exists in the system.',
+        data: existing,
+      };
+    }
+
+    // Step 5: Upload to Cloudinary
     const uploadRes = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
         { folder: 'aadhaar' },
         (error, result) => {
-          if (error || !result) return reject(error || new Error('No result'));
+          if (error || !result) return reject(error || new Error('Upload failed'));
           resolve(result);
         },
       ).end(file.buffer);
@@ -26,32 +78,27 @@ export class CloudinaryService {
 
     const imageUrl = (uploadRes as any).secure_url;
 
-    const { data: { text } } = await Tesseract.recognize(file.buffer, 'eng');
-
-    console.log('Extracted text:', text);
-
-    // Use Regex to Extract Data
-    const nameMatch = text.match(/(?<=Name[\s:]*)([A-Z ]+)/i);
-    const dobMatch = text.match(/(\d{2}\/\d{2}\/\d{4})/);
-    const aadhaarMatch = text.match(/(\d{4}\s\d{4}\s\d{4})/);
-
+    // Step 6: Return data
     return {
-      name: nameMatch?.[1]?.trim() || '',
-      dob: dobMatch?.[1] || '',
-      aadhaarNumber: aadhaarMatch?.[1]?.replace(/\s/g, '') || '',
-      aadhaarUrl: imageUrl,
+      status: 'success',
+      statusCode: 201,
+      message: 'Aadhaar extracted and ready to save.',
+      data: {
+        dob: dobMatch?.[1] || '',
+        aadhaarNumber,
+        aadhaarUrl: imageUrl,
+      },
     };
   }
 
-   async addClient(data: any, userId: string) {
+  async addClient(data: any, userId: string) {
     const newClient = new this.cloudinaryDataModel({
-      ...data,
       userId,
+      ...data,
     });
-    return await newClient.save();
-  }
 
-  async getClientDataByUser(userId: string) {
-    return await this.cloudinaryDataModel.find({ userId });
+    this.logger.log(`Saving data for userId=${userId}`);
+
+    return await newClient.save();
   }
 }
