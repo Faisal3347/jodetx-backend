@@ -6,7 +6,7 @@ export type CloudinaryDataDocument = CloudinaryData & Document;
 @Schema({ timestamps: true })
 export class CloudinaryData {
 
-  @Prop({ type: Types.ObjectId, ref: 'User' }) // 👈 stores the ID of the uploading user
+  @Prop({ type: Types.ObjectId, ref: 'User' }) 
   userId: string;
 
   @Prop()

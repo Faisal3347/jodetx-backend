@@ -30,7 +30,7 @@ export class CloudinaryController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    const userId = req.user.userId; // ✅ Extracted from token
+    const userId = req.user.userId; 
 
     this.logger.log(`File received: ${file?.originalname}`);
     this.logger.log(`User ID: ${userId}`);
@@ -65,7 +65,7 @@ export class CloudinaryController {
   @Get('details')
   async getAllAadhaar(@Res() res: Response) {
     try {
-      const data = await this.cloudinaryService.findAll(); // 👈 Add this method in service
+      const data = await this.cloudinaryService.findAll(); 
       return res.status(200).json({
         status: 'success',
         data,
